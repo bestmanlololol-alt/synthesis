@@ -1,38 +1,65 @@
 -- ============================================================
--- BLADE BALL BAC BYPASS — RUNS BEFORE ANYTHING ELSE
+-- SYNTHESIS UI + BLADE BALL BAC BYPASS
+-- Run this FIRST in your executor.
+-- ============================================================
+
+-- ============================================================
+-- BLADE BALL BAC BYPASS v3 (Run BEFORE anything else)
 -- ============================================================
 pcall(function()
     local RS = game:GetService("ReplicatedStorage")
+    local LP = game:GetService("Players").LocalPlayer
 
-    -- Nuke the Security folder (main BAC event hub)
-    local sec = RS:FindFirstChild("Security")
-    if sec then
-        for _, v in ipairs(sec:GetDescendants()) do
-            pcall(function() v:Destroy() end)
-        end
-        sec:Destroy()
-    end
-
-    -- Some builds hide it under different names
-    for _, name in ipairs({"Security", "AntiCheat", "BAC", "BladeBallSecurity"}) do
+    -- 1) Nuke the direct BAC objects (classic method)
+    local function nuke(name)
         local obj = RS:FindFirstChild(name)
-        if obj then obj:Destroy() end
+        if obj then
+            for _, v in ipairs(obj:GetDescendants()) do
+                pcall(function() v:Destroy() end)
+            end
+            obj:Destroy()
+        end
     end
+    nuke("Security")
+    nuke("AntiCheat")
+    nuke("BAC")
 
-    -- Kill the client-side device checker
-    local lp = game:GetService("Players").LocalPlayer
-    if lp then
-        local ps = lp:FindFirstChild("PlayerScripts")
-        if ps then
-            local client = ps:FindFirstChild("Client")
-            if client then
-                for _, obj in ipairs(client:GetChildren()) do
-                    if obj.Name:lower():find("device") or obj.Name:lower():find("checker") then
-                        pcall(function() obj:Destroy() end)
-                    end
+    -- 2) Kill the client-side DeviceChecker
+    if LP and LP:FindFirstChild("PlayerScripts") then
+        local ps = LP.PlayerScripts
+        if ps:FindFirstChild("Client") then
+            local client = ps.Client
+            for _, obj in ipairs(client:GetChildren()) do
+                if obj.Name:lower():find("device") or obj.Name:lower():find("checker") then
+                    pcall(function() obj:Destroy() end)
                 end
             end
         end
+    end
+
+    -- 3) Universal remote blocking (catches redundant BAC remotes)
+    for _, obj in ipairs(RS:GetDescendants()) do
+        if obj:IsA("RemoteEvent") or obj:IsA("RemoteFunction") then
+            local name = obj.Name:lower()
+            if name:find("report") or name:find("detect") or name:find("security") or name:find("bac") then
+                pcall(function() obj:Destroy() end)
+            end
+        end
+    end
+
+    -- 4) Metatable __namecall hook to block :Kick()
+    local mt = getrawmetatable(game)
+    if mt then
+        local oldNamecall = mt.__namecall
+        setreadonly(mt, false)
+        mt.__namecall = newcclosure(function(self, ...)
+            local method = getnamecallmethod()
+            if method == "Kick" and self == LP and not checkcaller() then
+                return
+            end
+            return oldNamecall(self, ...)
+        end)
+        setreadonly(mt, true)
     end
 end)
 -- ============================================================
@@ -58,10 +85,10 @@ getgenv().GG = {
 }
 
 -- ============================================================
--- SAFETY TOGGLES (flip to true if you want the risky features)
+-- SAFETY TOGGLES (leave false for BAC games)
 -- ============================================================
-local USE_ACRYLIC_BLUR   = false   -- Creates a Part in Camera → detected by BAC
-local USE_DEPTH_OF_FIELD = false   -- DepthOfFieldEffect in Lighting → detected by BAC
+local USE_ACRYLIC_BLUR   = false
+local USE_DEPTH_OF_FIELD = false
 -- ============================================================
 
 local SelectedLanguage = GG.Language
@@ -79,7 +106,7 @@ function convertTableToString(inputTable)
     return table.concat(inputTable, ", ")
 end
 
--- NOTE: cloneref removed — it's a known exploit signature that BAC flags.
+-- NOTE: cloneref removed (BAC flags it)
 local UserInputService = game:GetService('UserInputService')
 local ContentProvider  = game:GetService('ContentProvider')
 local TweenService     = game:GetService('TweenService')
@@ -126,7 +153,7 @@ local Util = setmetatable({
 }, Util)
 
 -- ============================================================
--- ACRYLIC BLUR — wrapped so it only runs if enabled
+-- ACRYLIC BLUR (disabled by default)
 -- ============================================================
 local AcrylicBlur = {}
 AcrylicBlur.__index = AcrylicBlur
@@ -588,7 +615,6 @@ function Library:create_ui()
             Size = UDim2.fromOffset(698, 479)
         }):Play()
 
-        -- Only build the blur if explicitly enabled (safer for BAC games)
         if USE_ACRYLIC_BLUR then
             pcall(function() AcrylicBlur.new(Container) end)
         end
@@ -1675,5 +1701,45 @@ function Library:create_ui()
 
     return self
 end
+
+-- ============================================================
+-- USAGE EXAMPLE (remove or customize as needed)
+-- ============================================================
+local Library = Library.new()
+local main = Library:load()
+
+-- Create a General tab
+local GeneralTab = main:create_tab("General", "rbxassetid://107819132007001")
+
+-- Create an Anti-Cheat Bypass module
+local acModule = GeneralTab:create_module({
+    title = "Anti-Cheat Bypass",
+    flag = "AC_Bypass",
+    description = "Runs the BAC bypass on enable.",
+    section = "left",
+    callback = function(state)
+        if state then
+            Library.SendNotification({
+                title = "Synthesis",
+                text = "Anti-Cheat bypass is active.",
+                duration = 3
+            })
+        end
+    end
+})
+
+acModule:create_checkbox({
+    title = "Enable Bypass",
+    flag = "AC_Bypass_Checkbox",
+    callback = function(state)
+        if state then
+            Library.SendNotification({
+                title = "Synthesis",
+                text = "Bypass enabled.",
+                duration = 3
+            })
+        end
+    end
+})
 
 return Library
