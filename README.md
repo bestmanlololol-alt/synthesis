@@ -249,7 +249,7 @@ Library.SendNotification({
 ## 👨‍🚀 Custom Example
 
 ```lua
-local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/MarchHubOnTopFr/Allusive-UI/refs/heads/main/Source.lua"))()
+local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/bestmanlololol-alt/synthesis/refs/heads/main/sysn"))()
 local main = Library.new()
 
 -- Tabs
