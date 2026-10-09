@@ -21,7 +21,7 @@ Welcome to **Allusive UI Library**, a sleek and highly customizable Roblox UI li
 Load the library with:
 
 ```lua
-local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/MarchHubOnTopFr/Allusive-UI/refs/heads/main/Source.lua"))()
+local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/bestmanlololol-alt/synthesis/refs/heads/main/sysn"))()
 local main = Library.new()
 
 main:load() -- Initialize the UI
